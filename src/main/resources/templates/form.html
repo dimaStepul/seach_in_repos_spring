@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>GitHub Repositories</title>
+  <style>
+    input {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+<h2>Enter GitHub Organization Link and Access Token</h2>
+<form action="#" th:action="@{/form}" th:object="${githubForm}" method="post">
+  <label for="organization">Organization Link:</label>
+  <input type="text" id="organization" th:field="*{organization}" /><br/>
+
+  <label for="accessToken">Access Token:</label>
+  <input type="password" id="accessToken" th:field="*{accessToken}" /><br/>
+
+  <label for="targetWord">Word to Search:</label>
+  <input  type="text" id="targetWord"  th:field="*{targetWord}" /><br/>
+
+  <button type="submit">Go</button>
+</form>
+</body>
+</html>

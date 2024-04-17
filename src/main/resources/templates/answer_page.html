@@ -1,0 +1,39 @@
+<!--<!DOCTYPE html>-->
+<!--<html xmlns:th="http://www.thymeleaf.org">-->
+<!--<head>-->
+<!--  <meta charset="UTF-8">-->
+<!--  <title>GitHub Repositories List</title>-->
+<!--  <style>-->
+<!--    .highlight {-->
+<!--      font-weight: bold;-->
+<!--      color: blue;-->
+<!--    }-->
+<!--  </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<h2>GitHub Repositories List</h2>-->
+<!--<ul>-->
+<!--  <li th:each="entry : ${highlightedRepositories}">-->
+<!--    <span th:class="${entry.value ? 'highlight' : ''}" th:text="${entry.key}"></span>-->
+<!--  </li>-->
+<!--</ul>-->
+<!--</body>-->
+<!--</html>-->
+
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>All GitHub Repositories</title>
+</head>
+<body>
+<h2>All GitHub Repositories</h2>
+<ul>
+  <li th:each="repo : ${repositories}">
+    <span th:text="${repo}"></span>
+  </li>
+</ul>
+</body>
+</html>
+
