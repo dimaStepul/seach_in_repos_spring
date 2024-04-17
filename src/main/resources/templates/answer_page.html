@@ -1,28 +1,5 @@
-<!--<!DOCTYPE html>-->
-<!--<html xmlns:th="http://www.thymeleaf.org">-->
-<!--<head>-->
-<!--  <meta charset="UTF-8">-->
-<!--  <title>GitHub Repositories List</title>-->
-<!--  <style>-->
-<!--    .highlight {-->
-<!--      font-weight: bold;-->
-<!--      color: blue;-->
-<!--    }-->
-<!--  </style>-->
-<!--</head>-->
-<!--<body>-->
-<!--<h2>GitHub Repositories List</h2>-->
-<!--<ul>-->
-<!--  <li th:each="entry : ${highlightedRepositories}">-->
-<!--    <span th:class="${entry.value ? 'highlight' : ''}" th:text="${entry.key}"></span>-->
-<!--  </li>-->
-<!--</ul>-->
-<!--</body>-->
-<!--</html>-->
-
-
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="html">
 <head>
   <meta charset="UTF-8">
   <title>All GitHub Repositories</title>
@@ -30,10 +7,17 @@
 <body>
 <h2>All GitHub Repositories</h2>
 <ul>
-  <li th:each="repo : ${repositories}">
+  <li th:each="repo : ${reposWithoutHello}">
     <span th:text="${repo}"></span>
   </li>
+  <strong>
+    <li th:each="repo : ${reposWithHello}">
+      <span th:text="${repo}"></span>
+    </li>
+  </strong>
 </ul>
+<a href="/form" class="goback-button">Go back on homepage</a>
 </body>
 </html>
+
 

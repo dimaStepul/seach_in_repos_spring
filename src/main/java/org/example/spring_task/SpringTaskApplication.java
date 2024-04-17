@@ -10,11 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 @SpringBootApplication
 public class SpringTaskApplication {
 
-  @RequestMapping("/")
-  String home() {
-    return "Hello World!";
-  }
-
   public static void main(String[] args) {
     SpringApplication.run(SpringTaskApplication.class, args);
   }
