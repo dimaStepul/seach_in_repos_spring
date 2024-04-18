@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.Objects;
-import org.example.spring_task.utils.GitHubApi;
+import org.example.spring_task.utils.GitHubApiBuilder;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,12 +16,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class GitHubService {
+
+
+  private static final Logger logger = LoggerFactory.getLogger(GitHubService.class);
 
   private final RestTemplate restTemplate;
 
@@ -45,35 +50,93 @@ public class GitHubService {
     return objectMapper.readTree(jsonString);
   }
 
+  private ResponseEntity<List<Map<String, Object>>> sendRequest(String apiUrl, HttpEntity<String> entity) {
+    try {
+      return restTemplate.exchange(apiUrl, HttpMethod.GET, entity, new ParameterizedTypeReference<>() {});
+    } catch (HttpClientErrorException.NotFound notFoundError) {
+      logger.error("Organization not found or has no repositories.");
+      throw notFoundError;
+    } catch (HttpClientErrorException.BadRequest badRequest) {
+      logger.error("Bad request");
+      throw badRequest;
+    } catch (HttpClientErrorException.Unauthorized unauthorizedError) {
+      logger.error("Bad token");
+      throw unauthorizedError;
+    } catch (HttpClientErrorException.TooManyRequests requestError) {
+      logger.error("Too many requests");
+      throw requestError;
+    } catch (HttpClientErrorException clientErrorException) {
+      logger.error("Client error: {}", clientErrorException.getMessage());
+      throw clientErrorException;
+    } catch (Exception e) {
+      logger.error("Unexpected error: {}", e.getMessage());
+      throw e;
+    }
+  }
+
+  private void processReadmeResponse(JsonNode jsonNode, String targetWord,
+      HashSet<String> repositoriesWithHello, HashSet<String> repositoriesWithoutHello,
+      Map<String, Object> repo) {
+    String encoding = jsonNode.get("encoding").asText();
+    String base64Content = jsonNode.get("content").asText();
+    base64Content = base64Content.replaceAll("\\s", "");
+    if ("base64".equals(encoding)) {
+      byte[] decodedBytes = Base64.getDecoder().decode(base64Content);
+      base64Content = new String(decodedBytes);
+    }
+    base64Content = base64Content.toLowerCase();
+    logger.info("Target word: {}", targetWord);
+    if (Objects.requireNonNull(base64Content).contains(targetWord.toLowerCase())) {
+      logger.info("Added repository with hello: {}", repo.get("full_name"));
+      repositoriesWithHello.add((String) repo.get("full_name"));
+      repositoriesWithoutHello.remove((String) repo.get("full_name"));
+    } else {
+      logger.info("Repository does not contain hello: {}", repo.get("full_name"));
+      repositoriesWithoutHello.add((String) repo.get("full_name"));
+    }
+  }
+
+  private void processRepository(Map<String, Object> repo, String targetWord, HttpEntity<String> entity,
+      HashSet<String> repositoriesWithHello, HashSet<String> repositoriesWithoutHello)
+      throws JsonProcessingException {
+
+    String readmeUrl = repo.get("contents_url").toString()
+        .replace("{+path}", "README.md");
+    ResponseEntity<String> readmeResponse;
+
+    try {
+      readmeResponse = restTemplate.exchange(readmeUrl, HttpMethod.GET, entity, String.class);
+    } catch (HttpClientErrorException.NotFound e) {
+      logger.error("README.md not found in repository: {}", repo.get("full_name"));
+      repositoriesWithoutHello.add((String) repo.get("full_name"));
+      return;
+    }
+
+    if (!readmeResponse.getStatusCode().is2xxSuccessful() || !readmeResponse.hasBody()) {
+      return;
+    }
+
+    JsonNode jsonNode = marshallResponseBody(readmeResponse);
+    processReadmeResponse(jsonNode, targetWord, repositoriesWithHello, repositoriesWithoutHello, repo);
+  }
+
+
   public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord)
       throws JsonProcessingException {
+
     String organizationName = extractOrganizationName(organizationLink);
-    String apiUrl = GitHubApi.apiLinkMain
-        + GitHubApi.apiOrgs
+
+    String apiUrl = GitHubApiBuilder.apiLinkMain
+        + GitHubApiBuilder.apiOrgs
         + organizationName
-        + GitHubApi.apiRepos;
-    System.out.println("sfdsfs" + apiUrl);
+        + GitHubApiBuilder.apiRepos;
+    logger.info("apiUrl:  "  + apiUrl);
+
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<String> entity = new HttpEntity<>(headers);
 
-    ResponseEntity<List<Map<String, Object>>> response;
-
-
-    try {
-      response = restTemplate.exchange(apiUrl, HttpMethod.GET, entity,
-          new ParameterizedTypeReference<>() {
-          });
-    } catch (HttpClientErrorException.NotFound e) {
-      System.out.println("Organization not found or has no repositories.");
-      return null;
-    } catch (HttpClientErrorException.BadRequest badRequest) {
-      System.out.println("bad request");
-      return null;
-    } catch (HttpClientErrorException.Unauthorized e) {
-      System.out.println("bad token ");
-      return null;
-    }
+    ResponseEntity<List<Map<String, Object>>> response = sendRequest(apiUrl, entity);
 
     HashSet<String> repositoriesWithHello = new HashSet<>();
     HashSet<String> repositoriesWithoutHello = new HashSet<>();
@@ -84,43 +147,7 @@ public class GitHubService {
 
     List<Map<String, Object>> reposFromResponse = response.getBody();
     for (Map<String, Object> repo : reposFromResponse) {
-      String readmeUrl = repo.get("contents_url").toString()
-          .replace("{+path}", "README.md");
-      ResponseEntity<String> readmeResponse;
-
-      try {
-        readmeResponse = restTemplate.exchange(readmeUrl, HttpMethod.GET, entity, String.class);
-      } catch (HttpClientErrorException.NotFound e) {
-        System.out.println("README.md not found in repository: " + repo.get("full_name"));
-        repositoriesWithoutHello.add((String) repo.get("full_name"));
-        continue;
-      }
-
-
-
-
-      if (!readmeResponse.getStatusCode().is2xxSuccessful()) {
-        break;
-      }
-      JsonNode jsonNode = marshallResponseBody(readmeResponse);
-
-      String encoding = jsonNode.get("encoding").asText();
-      String base64Content = jsonNode.get("content").asText();
-      base64Content = base64Content.replaceAll("\\s", "");
-      if ("base64".equals(encoding)) {
-        byte[] decodedBytes = Base64.getDecoder().decode(base64Content);
-        base64Content = new String(decodedBytes);
-      }
-      base64Content = base64Content.toLowerCase();
-      System.out.println("Targe word " + "  " + targetWord);
-//      System.out.println("ffsdfsdf" + "  " + base64Content);
-      if (Objects.requireNonNull(base64Content).contains(targetWord.toLowerCase())) {
-        System.out.println("added to with hello");
-        repositoriesWithHello.add((String) repo.get("full_name"));
-        repositoriesWithoutHello.remove((String) repo.get("full_name"));
-      } else {
-        repositoriesWithoutHello.add((String) repo.get("full_name"));
-      }
+      processRepository(repo, targetWord, entity, repositoriesWithHello, repositoriesWithoutHello);
     }
 
     return new GitHubRepos(repositoriesWithHello, repositoriesWithoutHello);

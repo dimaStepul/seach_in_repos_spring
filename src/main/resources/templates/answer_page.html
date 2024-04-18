@@ -1,8 +1,41 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="html">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <title>All GitHub Repositories</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    h2 {
+      margin-top: 30px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      margin-bottom: 10px;
+    }
+    .highlight {
+      font-weight: bold;
+      color: blue;
+    }
+    .goback-button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+    .goback-button:hover {
+      background-color: #0056b3;
+    }
+  </style>
 </head>
 <body>
 <h2>All GitHub Repositories</h2>
@@ -10,14 +43,10 @@
   <li th:each="repo : ${reposWithoutHello}">
     <span th:text="${repo}"></span>
   </li>
-  <strong>
-    <li th:each="repo : ${reposWithHello}">
-      <span th:text="${repo}"></span>
-    </li>
-  </strong>
+  <li th:each="repo : ${reposWithHello}">
+    <span class="highlight" th:text="${repo}"></span>
+  </li>
 </ul>
 <a href="/form" class="goback-button">Go back on homepage</a>
 </body>
 </html>
-
-
