@@ -6,6 +6,8 @@ import static org.example.spring_task.utils.GitHubApiBuilder.apiDecoder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.ConnectException;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +23,12 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -56,6 +62,8 @@ public class GitHubService {
     return objectMapper.readTree(jsonString);
   }
 
+  @Retryable(retryFor = {ConnectException.class,
+      ResourceAccessException.class}, maxAttempts = 4, backoff = @Backoff(delay = 1000))
   private ResponseEntity<List<Map<String, Object>>> sendRequest(String apiUrl,
       HttpEntity<String> entity) {
     try {
@@ -69,6 +77,12 @@ public class GitHubService {
       logger.error("Unexpected error: {}", error.getMessage());
       throw error;
     }
+  }
+
+  @Recover
+  public String recover(ConnectException e) {
+    logger.info("ConnectException recovered at:" + LocalDateTime.now());
+    return "Can not call api via connection problem ";
   }
 
   private void processReadmeResponse(JsonNode jsonNode, String targetWord,
@@ -87,7 +101,7 @@ public class GitHubService {
     content = content.toLowerCase();
 
     logger.info("Target word: {}", targetWord);
-    if (Objects.requireNonNull(content).contains(targetWord.toLowerCase())) {
+    if (targetWord != null && Objects.requireNonNull(content).contains(targetWord.toLowerCase())) {
       logger.info("Added repository with hello: {}", repo.get("full_name"));
       repositoriesWithHello.add((String) repo.get("full_name"));
       repositoriesWithoutHello.remove((String) repo.get("full_name"));

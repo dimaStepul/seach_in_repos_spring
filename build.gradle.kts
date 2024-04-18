@@ -16,10 +16,12 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("io.projectreactor:reactor-test")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf:3.2.4")
+    implementation("org.springframework.boot:spring-boot-starter-web:3.2.4")
+    implementation("org.springframework.retry:spring-retry:2.0.3")
+    implementation("org.springframework.boot:spring-boot-starter-aop:3.2.4")
+    testImplementation("org.springframework.boot:spring-boot-starter-test:3.2.4")
+    testImplementation("io.projectreactor:reactor-test:3.6.5")
 }
 
 tasks.withType<Test> {

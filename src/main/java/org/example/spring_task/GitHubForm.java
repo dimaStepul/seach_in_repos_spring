@@ -11,8 +11,12 @@ public class GitHubForm {
     return targetWord;
   }
 
-  public void setTargetWord(String targetWord) {
-    this.targetWord = targetWord;
+  public void setTargetWord(String word) {
+    if (word.isEmpty()) {
+      targetWord = null;
+    } else {
+      this.targetWord = word;
+    }
   }
 
   public String getOrganization() {
