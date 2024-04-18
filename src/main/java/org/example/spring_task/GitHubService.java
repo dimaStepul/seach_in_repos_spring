@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.example.spring_task.Exceptions.UnknownEncodingException;
+import org.example.spring_task.Exceptions.UnknownEncodingException.EmptyRepositoryListException;
+import org.example.spring_task.Exceptions.UnknownEncodingException.InvalidJsonDataException;
 import org.example.spring_task.utils.GitHubApiBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,9 @@ public class GitHubService {
       throws JsonProcessingException {
     Objects.requireNonNull(readmeResponse, "empty response body when marshalling");
     String readmeContent = readmeResponse.getBody();
+    if (readmeContent == null || !readmeResponse.hasBody()) {
+      throw new InvalidJsonDataException("Response does not contain valid JSON data");
+    }
     String jsonString = readmeContent.substring(readmeContent.indexOf('{'));
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -144,6 +149,9 @@ public class GitHubService {
     }
 
     List<Map<String, Object>> reposFromResponse = response.getBody();
+    if (reposFromResponse == null) {
+      throw new EmptyRepositoryListException();
+    }
     for (Map<String, Object> repo : reposFromResponse) {
       processRepository(repo, targetWord, entity, repositoriesWithHello, repositoriesWithoutHello);
     }
