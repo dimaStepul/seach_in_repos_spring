@@ -29,13 +29,13 @@ public class GitHubController {
     return errorHandler.getErrorPage();
   }
 
-  @GetMapping("/form")
+  @GetMapping("/")
   public String showForm(Model model) {
     model.addAttribute("githubForm", new GitHubForm());
     return "form";
   }
 
-  @PostMapping("/form")
+  @PostMapping("/")
   public String sumbitForm(@ModelAttribute GitHubForm gitHubForm, Model model) {
     try {
       GitHubRepos repos = gitHubService.getRepos(gitHubForm.getOrganization(),
