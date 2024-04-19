@@ -18,6 +18,7 @@ import org.example.spring_task.Exceptions.UnknownEncodingException.InvalidJsonDa
 import org.example.spring_task.utils.GitHubApiBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -67,6 +68,7 @@ public class GitHubService {
   private ResponseEntity<List<Map<String, Object>>> sendRequest(String apiUrl,
       HttpEntity<String> entity) {
     try {
+      logger.info("getting request not from cache");
       return restTemplate.exchange(apiUrl, HttpMethod.GET, entity,
           new ParameterizedTypeReference<>() {
           });
@@ -123,7 +125,7 @@ public class GitHubService {
     try {
       readmeResponse = restTemplate.exchange(readmeUrl, HttpMethod.GET, entity, String.class);
     } catch (HttpClientErrorException.NotFound e) {
-      logger.error("README.md not found in repository: {}", repo.get("full_name"));
+      logger.info("README.md not found in repository: {}", repo.get("full_name"));
       repositoriesWithoutHello.add((String) repo.get("full_name"));
       return;
     }
@@ -137,7 +139,7 @@ public class GitHubService {
         repo);
   }
 
-
+  @Cacheable(cacheNames = "default", key = "'getRepos:' + #organizationLink + ':' + #accessToken + ':' + #targetWord")
   public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord)
       throws JsonProcessingException {
 
