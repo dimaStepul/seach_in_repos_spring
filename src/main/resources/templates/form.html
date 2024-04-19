@@ -48,7 +48,7 @@
 </head>
 <body>
 <h2>Enter GitHub Organization Link and Access Token</h2>
-<form action="#" th:action="@{/}" th:object="${githubForm}" method="post">
+<form action="#" th:action="@{/form}" th:object="${githubForm}" method="post">
   <label for="organization">Organization Link or Name :</label>
   <input type="text" id="organization" th:field="*{organization}"/><br/>
 
