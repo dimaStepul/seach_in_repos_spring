@@ -1,6 +1,5 @@
 package org.example.spring_task;
 
-import java.util.HashSet;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,11 +40,9 @@ public class GitHubController {
       GitHubRepos repos = gitHubService.getRepos(gitHubForm.getOrganization(),
           gitHubForm.getAccessToken(), gitHubForm.getTargetWord());
 
-      HashSet<String> reposWithoutHello = repos.reposWithoutHello;
-      HashSet<String> reposWithHello = repos.reposWithHello;
 
-      model.addAttribute("reposWithHello", reposWithHello);
-      model.addAttribute("reposWithoutHello", reposWithoutHello);
+      model.addAttribute("reposWithHello", repos.reposWithHello());
+      model.addAttribute("reposWithoutHello", repos.reposWithoutHello());
     } catch (Exception e) {
       return handleError(e, model);
     }

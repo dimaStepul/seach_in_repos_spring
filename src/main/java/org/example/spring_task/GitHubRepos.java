@@ -1,17 +1,9 @@
 package org.example.spring_task;
 
 
-import java.util.HashSet;
+import java.util.Set;
 
 
-public class GitHubRepos {
-
-  public final HashSet<String> reposWithHello;
-  public final HashSet<String> reposWithoutHello;
-
-  public GitHubRepos(HashSet<String> reposWithHello, HashSet<String> reposWithoutHello) {
-    this.reposWithHello = reposWithHello;
-    this.reposWithoutHello = reposWithoutHello;
-  }
+public record GitHubRepos(Set<String> reposWithHello, Set<String> reposWithoutHello) {
 
 }
