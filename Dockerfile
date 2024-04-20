@@ -1,5 +1,8 @@
 #gradle build
 FROM gradle:jdk17 as builder
+LABEL maintainer="dimaStepul"
+LABEL version="0.1.0"
+LABEL description="first spring boot app: word extractor from repos in github orgs"
 WORKDIR /home/gradle/src
 COPY --chown=gradle:gradle build.gradle.kts settings.gradle.kts ./
 COPY --chown=gradle:gradle src ./src
@@ -16,4 +19,7 @@ USER stepik
 WORKDIR /app
 COPY --from=builder /home/gradle/src/build/libs/*.jar /app/
 EXPOSE 8080
+HEALTHCHECK --interval=5s \
+            --timeout=3s \
+            CMD curl -f http://localhost:8080/actuator/health || exit 1
 ENTRYPOINT  java -jar ${ARTIFACT_NAME}
