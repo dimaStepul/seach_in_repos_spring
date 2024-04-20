@@ -1,25 +1,11 @@
 package org.example.spring_task;
 
-import static org.example.spring_task.utils.GitHubApiBuilder.apiCodingAlgo;
-import static org.example.spring_task.utils.GitHubApiBuilder.apiDecoder;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.ConnectException;
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import org.example.spring_task.Exceptions.UnknownEncodingException;
-import org.example.spring_task.Exceptions.UnknownEncodingException.EmptyRepositoryListException;
-import org.example.spring_task.Exceptions.UnknownEncodingException.InvalidJsonDataException;
-import org.example.spring_task.utils.GitHubApiBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -32,9 +18,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashSet;
+
 @Service
 public class GitHubService {
-
 
   private static final Logger logger = LoggerFactory.getLogger(GitHubService.class);
 
@@ -44,34 +31,12 @@ public class GitHubService {
     this.restTemplate = restTemplate;
   }
 
-  public static String extractOrganizationName(String url) {
-    String[] parts = url.split("/");
-    return parts[parts.length - 1];
-  }
-
-
-  private JsonNode marshallResponseBody(ResponseEntity<String> readmeResponse)
-      throws JsonProcessingException {
-    Objects.requireNonNull(readmeResponse, "empty response body when marshalling");
-    String readmeContent = readmeResponse.getBody();
-    if (readmeContent == null || !readmeResponse.hasBody()) {
-      throw new InvalidJsonDataException("Response does not contain valid JSON data");
-    }
-    String jsonString = readmeContent.substring(readmeContent.indexOf('{'));
-    ObjectMapper objectMapper = new ObjectMapper();
-
-    return objectMapper.readTree(jsonString);
-  }
-
-  @Retryable(retryFor = {ConnectException.class,
-      ResourceAccessException.class}, maxAttempts = 4, backoff = @Backoff(delay = 1000))
-  private ResponseEntity<List<Map<String, Object>>> sendRequest(String apiUrl,
-      HttpEntity<String> entity) {
+  @Retryable(retryFor = {HttpClientErrorException.class, ResourceAccessException.class}, maxAttempts = 4,
+      backoff = @Backoff(delay = 1000))
+  private ResponseEntity<String> doRequest(String apiUrl, HttpEntity<String> entity) {
     try {
-      logger.info("getting request not from cache");
-      return restTemplate.exchange(apiUrl, HttpMethod.GET, entity,
-          new ParameterizedTypeReference<>() {
-          });
+      logger.info("Getting request not from cache");
+      return restTemplate.exchange(apiUrl, HttpMethod.GET, entity, String.class);
     } catch (HttpClientErrorException clientErrorException) {
       logger.error("Client error: {}", clientErrorException.getMessage());
       throw clientErrorException;
@@ -82,96 +47,80 @@ public class GitHubService {
   }
 
   @Recover
-  public String recover(ConnectException e) {
-    logger.info("ConnectException recovered at:" + LocalDateTime.now());
-    return "Can not call api via connection problem ";
-  }
-
-  private void processReadmeResponse(JsonNode jsonNode, String targetWord,
-      HashSet<String> repositoriesWithHello, HashSet<String> repositoriesWithoutHello,
-      Map<String, Object> repo) {
-    String encoding = jsonNode.get("encoding").asText();
-    String content = jsonNode.get("content").asText();
-
-    content = content.replaceAll("\\s", "");
-    if (apiCodingAlgo.equals(encoding)) {
-      byte[] decodedBytes = apiDecoder.decode(content);
-      content = new String(decodedBytes);
-    } else {
-      throw new UnknownEncodingException("Unknown encoding: " + encoding);
-    }
-    content = content.toLowerCase();
-
-    logger.info("Target word: {}", targetWord);
-    if (targetWord != null && Objects.requireNonNull(content).contains(targetWord.toLowerCase())) {
-      logger.info("Added repository with hello: {}", repo.get("full_name"));
-      repositoriesWithHello.add((String) repo.get("full_name"));
-      repositoriesWithoutHello.remove((String) repo.get("full_name"));
-    } else {
-      logger.info("Repository does not contain hello: {}", repo.get("full_name"));
-      repositoriesWithoutHello.add((String) repo.get("full_name"));
-    }
-  }
-
-  private void processRepository(Map<String, Object> repo, String targetWord,
-      HttpEntity<String> entity,
-      HashSet<String> repositoriesWithHello, HashSet<String> repositoriesWithoutHello)
-      throws JsonProcessingException {
-
-    String readmeUrl = repo.get("contents_url").toString()
-        .replace("{+path}", "README.md");
-    ResponseEntity<String> readmeResponse;
-
-    try {
-      readmeResponse = restTemplate.exchange(readmeUrl, HttpMethod.GET, entity, String.class);
-    } catch (HttpClientErrorException.NotFound e) {
-      logger.info("README.md not found in repository: {}", repo.get("full_name"));
-      repositoriesWithoutHello.add((String) repo.get("full_name"));
-      return;
-    }
-
-    if (!readmeResponse.getStatusCode().is2xxSuccessful() || !readmeResponse.hasBody()) {
-      return;
-    }
-
-    JsonNode jsonNode = marshallResponseBody(readmeResponse);
-    processReadmeResponse(jsonNode, targetWord, repositoriesWithHello, repositoriesWithoutHello,
-        repo);
+  public String recover(HttpClientErrorException e) {
+    logger.info("HttpClientErrorException recovered");
+    return "Can not call API due to client error";
   }
 
   @Cacheable(cacheNames = "default", key = "'getRepos:' + #organizationLink + ':' + #accessToken + ':' + #targetWord")
-  public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord)
-      throws JsonProcessingException {
-
+  public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord) {
     String organizationName = extractOrganizationName(organizationLink);
+    logger.info("organizationName" + organizationName);
+    HashSet<String> allRepositories = getAllRepositories(organizationName, accessToken);
+    HashSet<String> filteredRepositories = getFilteredRepositories(organizationName, accessToken, targetWord);
+    if (!filteredRepositories.isEmpty())
+      allRepositories.retainAll(filteredRepositories);
+    return new GitHubRepos(filteredRepositories, allRepositories);
+  }
 
-    String apiUrl = GitHubApiBuilder.apiLinkMain
-        + GitHubApiBuilder.apiOrgs
-        + organizationName
-        + GitHubApiBuilder.apiRepos;
-    logger.info("apiUrl:  " + apiUrl);
+  private HashSet<String> getAllRepositories(String organizationName, String accessToken) {
+    String allReposUrl = "https://api.github.com/orgs/" + organizationName + "/repos";
+    logger.info("allReposUrl" + allReposUrl);
 
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<String> entity = new HttpEntity<>(headers);
 
-    ResponseEntity<List<Map<String, Object>>> response = sendRequest(apiUrl, entity);
-
-    HashSet<String> repositoriesWithHello = new HashSet<>();
-    HashSet<String> repositoriesWithoutHello = new HashSet<>();
-
-    if (!response.getStatusCode().is2xxSuccessful()) {
-      return null;
-    }
-
-    List<Map<String, Object>> reposFromResponse = response.getBody();
-    if (reposFromResponse == null) {
-      throw new EmptyRepositoryListException();
-    }
-    for (Map<String, Object> repo : reposFromResponse) {
-      processRepository(repo, targetWord, entity, repositoriesWithHello, repositoriesWithoutHello);
-    }
-
-    return new GitHubRepos(repositoriesWithHello, repositoriesWithoutHello);
+    ResponseEntity<String> allReposResponse = doRequest(allReposUrl, entity);
+    return extractRepositoryNames(allReposResponse);
   }
+
+  private HashSet<String> getFilteredRepositories(String organizationName, String accessToken, String targetWord) {
+    String searchReposUrl = "https://api.github.com/search/repositories?q=org:" + organizationName + "+" + targetWord + "+in:readme";
+    logger.info("searchReposUrl" + searchReposUrl);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(accessToken);
+    HttpEntity<String> entity = new HttpEntity<>(headers);
+    ResponseEntity<String> searchReposResponse = doRequest(searchReposUrl, entity);
+    return extractRepositoryNames(searchReposResponse);
+  }
+
+  private String extractOrganizationName(String url) {
+    String[] parts = url.split("/");
+    return parts[parts.length - 1];
+  }
+
+  private HashSet<String> extractRepositoryNames(ResponseEntity<String> response) {
+    HashSet<String> repositoryNames = new HashSet<>();
+    if (response.getStatusCode().is2xxSuccessful()) {
+      String responseBody = response.getBody();
+      logger.info("responseBody  " + responseBody);
+      if (responseBody != null) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+          JsonNode root;
+          if (responseBody.startsWith("[")) {
+            root = objectMapper.readTree(responseBody);
+          } else {
+            root = objectMapper.readTree(responseBody).get("items");
+          }
+
+          if (root != null && root.isArray()) {
+            for (JsonNode item : root) {
+              logger.info("item  " + item);
+              JsonNode fullNameNode = item.get("full_name");
+              logger.info("item.get(\"full_name\");  " + item.get("full_name"));
+              if (fullNameNode != null) {
+                repositoryNames.add(fullNameNode.asText());
+              }
+            }
+          }
+        } catch (JsonProcessingException e) {
+          logger.error("Error processing JSON response: {}", e.getMessage());
+        }
+      }
+    }
+    return repositoryNames;
+  }
+
 }
