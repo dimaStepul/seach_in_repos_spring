@@ -1,22 +1,16 @@
 package org.example.spring_task.utils;
 
-import java.util.Base64;
-import java.util.Base64.Decoder;
-
 public class GitHubApiBuilder {
 
-  public final static String apiLinkMain = "https://api.github.com";
+  public final static String apiLinkForRepos = "https://api.github.com/orgs/";
   public final static String apiRepos = "/repos";
 
-  public final static String apiOrgs = "/orgs/";
+  public final static String apiSearchOrgRepos = "https://api.github.com/search/repositories?q=org:";
+  public final static String apiSearchInReadme = "+in:readme";
 
-  public final static String apiForWordSearchInRepos = "https://api.github.com/search/repositories?q=";
-  public final static String apiOrgName = "org:";
-  public final static String apiSearchInReadme= "in:readme";
+  // example of request to  get all repos from organization:
+  //  https://api.github.com/orgs/skibidi-toilets/repos
 
-//  https://api.github.com/search/repositories?q=org:skibidi-toilets+hello+in:readme"
-
-//
-//  public final static String apiCodingAlgo = "base64";
-//  public final static Decoder apiDecoder = Base64.getDecoder();
+  // example of request to GitHub rest api to get all repos with specific word in readme:
+  //  https://api.github.com/search/repositories?q=org:skibidi-toilets+hello+in:readme"
 }

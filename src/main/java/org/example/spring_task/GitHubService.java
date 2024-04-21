@@ -1,8 +1,14 @@
 package org.example.spring_task;
 
+import static org.example.spring_task.utils.GitHubApiBuilder.apiLinkForRepos;
+import static org.example.spring_task.utils.GitHubApiBuilder.apiRepos;
+import static org.example.spring_task.utils.GitHubApiBuilder.apiSearchInReadme;
+import static org.example.spring_task.utils.GitHubApiBuilder.apiSearchOrgRepos;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -18,8 +24,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashSet;
-
 @Service
 public class GitHubService {
 
@@ -31,7 +35,8 @@ public class GitHubService {
     this.restTemplate = restTemplate;
   }
 
-  @Retryable(retryFor = {HttpClientErrorException.class, ResourceAccessException.class}, maxAttempts = 4,
+  @Retryable(retryFor = {HttpClientErrorException.class,
+      ResourceAccessException.class}, maxAttempts = 4,
       backoff = @Backoff(delay = 1000))
   private ResponseEntity<String> doRequest(String apiUrl, HttpEntity<String> entity) {
     try {
@@ -52,19 +57,32 @@ public class GitHubService {
     return "Can not call API due to client error";
   }
 
+  private String extractOrganizationName(String url) {
+    String[] parts = url.split("/");
+    return parts[parts.length - 1];
+  }
+
   @Cacheable(cacheNames = "default", key = "'getRepos:' + #organizationLink + ':' + #accessToken + ':' + #targetWord")
   public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord) {
     String organizationName = extractOrganizationName(organizationLink);
     logger.info("organizationName" + organizationName);
     HashSet<String> allRepositories = getAllRepositories(organizationName, accessToken);
-    HashSet<String> filteredRepositories = getFilteredRepositories(organizationName, accessToken, targetWord);
-    if (!filteredRepositories.isEmpty())
-      allRepositories.retainAll(filteredRepositories);
+    HashSet<String> filteredRepositories = getFilteredRepositories(organizationName, accessToken,
+        targetWord);
+
+    logger.info("allRepositories:");
+    allRepositories.forEach(logger::info);
+    logger.info("filteredRepositories:");
+    filteredRepositories.forEach(logger::info);
+
+    if (!filteredRepositories.isEmpty()) {
+      allRepositories.removeAll(filteredRepositories);
+    }
     return new GitHubRepos(filteredRepositories, allRepositories);
   }
 
   private HashSet<String> getAllRepositories(String organizationName, String accessToken) {
-    String allReposUrl = "https://api.github.com/orgs/" + organizationName + "/repos";
+    String allReposUrl = apiLinkForRepos + organizationName + apiRepos;
     logger.info("allReposUrl" + allReposUrl);
 
     HttpHeaders headers = new HttpHeaders();
@@ -75,8 +93,11 @@ public class GitHubService {
     return extractRepositoryNames(allReposResponse);
   }
 
-  private HashSet<String> getFilteredRepositories(String organizationName, String accessToken, String targetWord) {
-    String searchReposUrl = "https://api.github.com/search/repositories?q=org:" + organizationName + "+" + targetWord + "+in:readme";
+  private HashSet<String> getFilteredRepositories(String organizationName, String accessToken,
+      String targetWord) {
+    String searchReposUrl =
+        apiSearchOrgRepos + organizationName + "+" + targetWord
+            + apiSearchInReadme;
     logger.info("searchReposUrl" + searchReposUrl);
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
@@ -85,40 +106,35 @@ public class GitHubService {
     return extractRepositoryNames(searchReposResponse);
   }
 
-  private String extractOrganizationName(String url) {
-    String[] parts = url.split("/");
-    return parts[parts.length - 1];
-  }
 
   private HashSet<String> extractRepositoryNames(ResponseEntity<String> response) {
     HashSet<String> repositoryNames = new HashSet<>();
-    if (response.getStatusCode().is2xxSuccessful()) {
-      String responseBody = response.getBody();
-      logger.info("responseBody  " + responseBody);
-      if (responseBody != null) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
-          JsonNode root;
-          if (responseBody.startsWith("[")) {
-            root = objectMapper.readTree(responseBody);
-          } else {
-            root = objectMapper.readTree(responseBody).get("items");
-          }
-
-          if (root != null && root.isArray()) {
-            for (JsonNode item : root) {
-              logger.info("item  " + item);
-              JsonNode fullNameNode = item.get("full_name");
-              logger.info("item.get(\"full_name\");  " + item.get("full_name"));
-              if (fullNameNode != null) {
-                repositoryNames.add(fullNameNode.asText());
-              }
-            }
-          }
-        } catch (JsonProcessingException e) {
-          logger.error("Error processing JSON response: {}", e.getMessage());
+    if (!response.getStatusCode().is2xxSuccessful()) {
+      return repositoryNames;
+    }
+    String responseBody = response.getBody();
+    if (responseBody == null) {
+      return repositoryNames;
+    }
+    ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      JsonNode root;
+      if (responseBody.startsWith("[")) {
+        root = objectMapper.readTree(responseBody);
+      } else {
+        root = objectMapper.readTree(responseBody).get("items");
+      }
+      if (root == null || !root.isArray()) {
+        return repositoryNames;
+      }
+      for (JsonNode item : root) {
+        JsonNode fullNameNode = item.get("full_name");
+        if (fullNameNode != null) {
+          repositoryNames.add(fullNameNode.asText());
         }
       }
+    } catch (JsonProcessingException e) {
+      logger.error("Error processing JSON response: {}", e.getMessage());
     }
     return repositoryNames;
   }
