@@ -2,7 +2,6 @@ package org.example.spring_task;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,15 +18,6 @@ public class GitHubController {
     this.gitHubService = gitHubService;
   }
 
-  @ExceptionHandler(Throwable.class)
-  public String handleError(Throwable e, Model model) {
-    ErrorHandler errorHandler = ErrorHandler.getErrorType(e);
-    model.addAttribute("errorType", errorHandler);
-    model.addAttribute("errorCode", errorHandler.name());
-    model.addAttribute("errorMessage", e.getMessage());
-    return errorHandler.getErrorPage();
-  }
-
   @GetMapping("/form")
   public String showForm(Model model) {
     model.addAttribute("githubForm", new GitHubForm());
@@ -35,18 +25,19 @@ public class GitHubController {
   }
 
   @PostMapping("/form")
-  public String sumbitForm(@ModelAttribute GitHubForm gitHubForm, Model model) {
-    try {
-      GitHubRepos repos = gitHubService.getRepos(gitHubForm.getOrganization(),
-          gitHubForm.getAccessToken(), gitHubForm.getTargetWord());
+  public String submitForm(@ModelAttribute GitHubForm gitHubForm, Model model) {
+    GitHubRepos repos = gitHubService.getRepos(gitHubForm.getOrganization(),
+        gitHubForm.getAccessToken(), gitHubForm.getTargetWord());
 
 
-      model.addAttribute("reposWithHello", repos.reposWithHello());
-      model.addAttribute("reposWithoutHello", repos.reposWithoutHello());
-    } catch (Exception e) {
-      return handleError(e, model);
+    model.addAttribute("reposWithHello", repos.reposWithHello());
+    model.addAttribute("reposWithoutHello", repos.reposWithoutHello());
+    if (repos.reposWithHello().isEmpty() && repos.reposWithoutHello().isEmpty()) {
+      return "no_repos_page";
     }
-    return "answer_page";
+    else {
+      return "answer_page";
+    }
   }
 }
 

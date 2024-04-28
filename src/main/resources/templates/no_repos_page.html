@@ -1,21 +1,26 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html xmlns:th="http://www.thymeleaf.org" lang="en-us">
 <head>
   <meta charset="UTF-8">
-  <title>Organization Not Found</title>
+  <title>No Repositories Found</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
     }
 
-    .error-message {
+    h2 {
       margin-top: 50px;
       font-size: 24px;
       color: red;
     }
 
-    .goback-button {
+    p {
+      font-size: 18px;
+      margin-top: 20px;
+    }
+
+    a {
       display: inline-block;
       margin-top: 20px;
       padding: 10px 20px;
@@ -26,14 +31,13 @@
       transition: background-color 0.3s ease;
     }
 
-    .goback-button:hover {
+    a:hover {
       background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-<p class="error-message">The organization was not found</p>
-<p class="error-message">Error message: <span th:text="${errorCode}"></span></p>
-<a href="/form" class="goback-button">Go back on homepage</a>
+<h2>There are no repos in your organization.</h2>
+<a href="/form">Go back</a>
 </body>
 </html>

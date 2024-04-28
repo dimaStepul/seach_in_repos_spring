@@ -8,6 +8,7 @@ import static org.example.spring_task.utils.GitHubApiBuilder.apiSearchOrgRepos;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collections;
 import java.util.HashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,9 @@ public class GitHubService {
     String organizationName = extractOrganizationName(organizationLink);
     logger.info("organizationName" + organizationName);
     HashSet<String> allRepositories = getAllRepositories(organizationName, accessToken);
+    if (allRepositories.isEmpty()) {
+      return new GitHubRepos(Collections.emptySet(), Collections.emptySet());
+    }
     HashSet<String> filteredRepositories = getFilteredRepositories(organizationName, accessToken,
         targetWord);
 
