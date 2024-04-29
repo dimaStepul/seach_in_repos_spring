@@ -1,4 +1,4 @@
-package org.example.spring_task;
+package org.example.spring_task.error;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;

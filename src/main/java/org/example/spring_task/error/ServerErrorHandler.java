@@ -1,4 +1,4 @@
-package org.example.spring_task;
+package org.example.spring_task.error;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.HttpStatus;
