@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import org.example.spring_task.services.GitHubService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -25,7 +27,10 @@ class GitHubControllerTests {
   private MockMvc mockMvc;
 
   @MockBean
-  private GitHubService gitHubService;
+  private GitHubService testGitHubService;
+
+  @MockBean
+  private RestTemplate testRestTemplate;
 
   @Test
   void testInternalServerError() throws Exception {
@@ -45,7 +50,7 @@ class GitHubControllerTests {
     Set<String> reposWithoutHello = new HashSet<>(Set.of("repo3", "repo4"));
     GitHubRepos gitHubRepos = new GitHubRepos(reposWithHello, reposWithoutHello);
 
-    when(gitHubService.getRepos("organization", "accessToken", "targetWord")).thenReturn(
+    when(testGitHubService.getRepos("organization", "accessToken", "targetWord")).thenReturn(
         gitHubRepos);
 
     mockMvc.perform(MockMvcRequestBuilders.post("/form")
@@ -61,7 +66,7 @@ class GitHubControllerTests {
   @Test
   public void testEmptyRepos() throws Exception {
     GitHubRepos gitHubRepos = new GitHubRepos(new HashSet<>(), new HashSet<>());
-    when(gitHubService.getRepos("emptyOrg", "emptyToken", "emptyWord")).thenReturn(gitHubRepos);
+    when(testGitHubService.getRepos("emptyOrg", "emptyToken", "emptyWord")).thenReturn(gitHubRepos);
 
     mockMvc.perform(MockMvcRequestBuilders.post("/form")
             .param("organization", "emptyOrg")
@@ -77,7 +82,7 @@ class GitHubControllerTests {
 
   @Test
   public void testInvalidRepos() throws Exception {
-    when(gitHubService.getRepos("invalidOrg", "invalidToken", "invalidWord")).thenThrow(
+    when(testGitHubService.getRepos("invalidOrg", "invalidToken", "invalidWord")).thenThrow(
         new RuntimeException("Invalid data"));
 
     mockMvc.perform(MockMvcRequestBuilders.post("/form")
@@ -91,7 +96,7 @@ class GitHubControllerTests {
 
   @Test
   public void testUnauthorizedRepos() throws Exception {
-    when(gitHubService.getRepos("unauthorizedOrg", "invalidToken", "validWord"))
+    when(testGitHubService.getRepos("unauthorizedOrg", "invalidToken", "validWord"))
         .thenThrow(new HttpClientErrorException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
     mockMvc.perform(MockMvcRequestBuilders.post("/form")
@@ -105,7 +110,7 @@ class GitHubControllerTests {
 
   @Test
   public void testNoOrg() throws Exception {
-    when(gitHubService.getRepos("", "invalidToken", "validWord"))
+    when(testGitHubService.getRepos("", "invalidToken", "validWord"))
         .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND, "NOT_FOUND"));
 
     mockMvc.perform(MockMvcRequestBuilders.post("/form")
@@ -116,5 +121,29 @@ class GitHubControllerTests {
         .andExpect(MockMvcResultMatchers.view().name("not_found_error_page"));
   }
 
+//  @Test
+//  void testCacheHit() {
+//    ResponseEntity<String> responseEntity = ResponseEntity.ok().body("cached_response");
+//    Mockito.when(testRestTemplate.exchange(anyString(), Mockito.eq(HttpMethod.GET), Mockito.any(HttpEntity.class), Mockito.eq(String.class)))
+//        .thenReturn(responseEntity);
+//
+//    testGitHubService.getRepos("organization", "accessToken", "targetWord");
+//    testGitHubService.getRepos("organization", "accessToken", "targetWord");
+//
+//    Mockito.verify(testRestTemplate, times(1)).exchange(anyString(), Mockito.eq(HttpMethod.GET), Mockito.any(HttpEntity.class), Mockito.eq(String.class));
+//  }
+//
+//  @Test
+//  void testCacheMiss() {
+//    ResponseEntity<String> responseEntity = ResponseEntity.ok().body("uncached_response");
+//    Mockito.when(testRestTemplate.exchange(anyString(), Mockito.eq(HttpMethod.POST), Mockito.any(
+//            HttpEntity.class), Mockito.eq(String.class)))
+//        .thenReturn(responseEntity);
+//
+//    testGitHubService.getRepos("organization", "accessToken", "targetWord");
+//    testGitHubService.getRepos("anotherOrganization", "anotherAccessToken", "anotherTargetWord");
+//
+//    Mockito.verify(testRestTemplate, times(2)).exchange(anyString(), Mockito.eq(HttpMethod.POST), Mockito.any(HttpEntity.class), Mockito.eq(String.class));
+//  }
 
 }
