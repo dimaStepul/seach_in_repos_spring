@@ -121,29 +121,4 @@ class GitHubControllerTests {
         .andExpect(MockMvcResultMatchers.view().name("not_found_error_page"));
   }
 
-//  @Test
-//  void testCacheHit() {
-//    ResponseEntity<String> responseEntity = ResponseEntity.ok().body("cached_response");
-//    Mockito.when(testRestTemplate.exchange(anyString(), Mockito.eq(HttpMethod.GET), Mockito.any(HttpEntity.class), Mockito.eq(String.class)))
-//        .thenReturn(responseEntity);
-//
-//    testGitHubService.getRepos("organization", "accessToken", "targetWord");
-//    testGitHubService.getRepos("organization", "accessToken", "targetWord");
-//
-//    Mockito.verify(testRestTemplate, times(1)).exchange(anyString(), Mockito.eq(HttpMethod.GET), Mockito.any(HttpEntity.class), Mockito.eq(String.class));
-//  }
-//
-//  @Test
-//  void testCacheMiss() {
-//    ResponseEntity<String> responseEntity = ResponseEntity.ok().body("uncached_response");
-//    Mockito.when(testRestTemplate.exchange(anyString(), Mockito.eq(HttpMethod.POST), Mockito.any(
-//            HttpEntity.class), Mockito.eq(String.class)))
-//        .thenReturn(responseEntity);
-//
-//    testGitHubService.getRepos("organization", "accessToken", "targetWord");
-//    testGitHubService.getRepos("anotherOrganization", "anotherAccessToken", "anotherTargetWord");
-//
-//    Mockito.verify(testRestTemplate, times(2)).exchange(anyString(), Mockito.eq(HttpMethod.POST), Mockito.any(HttpEntity.class), Mockito.eq(String.class));
-//  }
-
 }

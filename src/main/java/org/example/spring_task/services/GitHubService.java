@@ -42,32 +42,6 @@ public class GitHubService {
     this.restTemplate = restTemplate;
   }
 
-  @Retryable(retryFor = {HttpClientErrorException.class,
-      ResourceAccessException.class}, maxAttempts = 4,
-      backoff = @Backoff(delay = 1000))
-  private ResponseEntity<String> doRequest(String apiUrl, HttpEntity<String> entity) {
-    try {
-      logger.info("Getting request not from cache");
-      return restTemplate.exchange(apiUrl, HttpMethod.GET, entity, String.class);
-    } catch (HttpClientErrorException clientErrorException) {
-      logger.error("Client error: {}", clientErrorException.getMessage());
-      throw clientErrorException;
-    } catch (Exception error) {
-      logger.error("Unexpected error: {}", error.getMessage());
-      throw error;
-    }
-  }
-
-  @Recover
-  public String recover(HttpClientErrorException e) {
-    logger.info("HttpClientErrorException recovered");
-    return "Can not call API due to client error";
-  }
-
-  private String extractOrganizationName(String url) {
-    String[] parts = url.split("/");
-    return parts[parts.length - 1];
-  }
 
   @Cacheable(cacheNames = "default", key = "'getRepos:' + #organizationLink + ':' + #accessToken + ':' + #targetWord")
   public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord) {
@@ -90,6 +64,33 @@ public class GitHubService {
     }
     return new GitHubRepos(filteredRepositories, allRepositories);
   }
+  @Retryable(retryFor = {HttpClientErrorException.class,
+      ResourceAccessException.class}, maxAttempts = 4,
+      backoff = @Backoff(delay = 1000))
+  private ResponseEntity<String> doRequest(String apiUrl, HttpEntity<String> entity) {
+    try {
+      logger.info("Getting request not from cache");
+      return restTemplate.exchange(apiUrl, HttpMethod.GET, entity, String.class);
+    } catch (HttpClientErrorException clientErrorException) {
+      logger.error("Client error: {}", clientErrorException.getMessage());
+      throw clientErrorException;
+    } catch (Exception error) {
+      logger.error("Unexpected error: {}", error.getMessage());
+      throw error;
+    }
+  }
+
+  @Recover
+  private String recover(HttpClientErrorException e) {
+    logger.info("HttpClientErrorException recovered");
+    return "Can not call API due to client error";
+  }
+
+  private String extractOrganizationName(String url) {
+    String[] parts = url.split("/");
+    return parts[parts.length - 1];
+  }
+
 
   private Set<String> getAllRepositories(String organizationName, String accessToken) {
     String allReposUrl = apiLinkForRepos + organizationName + apiRepos;
