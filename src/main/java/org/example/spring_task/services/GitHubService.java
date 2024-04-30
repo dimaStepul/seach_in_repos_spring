@@ -1,9 +1,5 @@
 package org.example.spring_task.services;
 
-import static org.example.spring_task.utils.GitHubApiBuilder.apiLinkForRepos;
-import static org.example.spring_task.utils.GitHubApiBuilder.apiRepos;
-import static org.example.spring_task.utils.GitHubApiBuilder.apiSearchInReadme;
-import static org.example.spring_task.utils.GitHubApiBuilder.apiSearchOrgRepos;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,6 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.example.spring_task.GitHubRepos;
 import org.example.spring_task.services.GitHubResponse.Item;
+import org.example.spring_task.utils.GitHubApiBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -46,7 +43,7 @@ public class GitHubService {
   @Cacheable(cacheNames = "default", key = "'getRepos:' + #organizationLink + ':' + #accessToken + ':' + #targetWord")
   public GitHubRepos getRepos(String organizationLink, String accessToken, String targetWord) {
     String organizationName = extractOrganizationName(organizationLink);
-    logger.info("organizationName" + organizationName);
+    logger.info("organizationName: {}",  organizationName);
     Set<String> allRepositories = getAllRepositories(organizationName, accessToken);
     if (allRepositories.isEmpty()) {
       return new GitHubRepos(Collections.emptySet(), Collections.emptySet());
@@ -54,16 +51,15 @@ public class GitHubService {
     Set<String> filteredRepositories = getFilteredRepositories(organizationName, accessToken,
         targetWord);
 
-    logger.info("allRepositories:");
-    allRepositories.forEach(logger::info);
-    logger.info("filteredRepositories:");
-    filteredRepositories.forEach(logger::info);
+    logger.info("allRepositories : {}", allRepositories);
+    logger.info("filteredRepositories : {}", filteredRepositories);
 
     if (!filteredRepositories.isEmpty()) {
       allRepositories.removeAll(filteredRepositories);
     }
     return new GitHubRepos(filteredRepositories, allRepositories);
   }
+
   @Retryable(retryFor = {HttpClientErrorException.class,
       ResourceAccessException.class}, maxAttempts = 4,
       backoff = @Backoff(delay = 1000))
@@ -93,8 +89,8 @@ public class GitHubService {
 
 
   private Set<String> getAllRepositories(String organizationName, String accessToken) {
-    String allReposUrl = apiLinkForRepos + organizationName + apiRepos;
-    logger.info("allReposUrl" + allReposUrl);
+    String allReposUrl = GitHubApiBuilder.allReposBuilder(organizationName).build();
+    logger.info("allReposUrl: {}", allReposUrl);
 
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
@@ -106,10 +102,10 @@ public class GitHubService {
 
   private Set<String> getFilteredRepositories(String organizationName, String accessToken,
       String targetWord) {
-    String searchReposUrl =
-        apiSearchOrgRepos + organizationName + "+" + targetWord
-            + apiSearchInReadme;
-    logger.info("searchReposUrl" + searchReposUrl);
+    String searchReposUrl = GitHubApiBuilder.searchBuilder(organizationName)
+        .withKeyword(targetWord)
+        .build();
+    logger.info("searchReposUrl: {}", searchReposUrl);
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<String> entity = new HttpEntity<>(headers);
