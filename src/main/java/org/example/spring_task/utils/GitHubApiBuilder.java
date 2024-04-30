@@ -3,9 +3,10 @@ package org.example.spring_task.utils;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GitHubApiBuilder {
+public final class GitHubApiBuilder {
 
   private static final String BASE_URL = "https://api.github.com/";
+
 
   public static SearchInOrgBuilder searchBuilder(String organizationName) {
     return new SearchInOrgBuilder(organizationName);
@@ -13,6 +14,9 @@ public class GitHubApiBuilder {
 
   public static AllReposBuilder allReposBuilder(String organizationName) {
     return new AllReposBuilder(organizationName);
+  }
+
+  private GitHubApiBuilder() {
   }
 
   public static class SearchInOrgBuilder {
