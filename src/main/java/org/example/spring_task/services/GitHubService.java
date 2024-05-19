@@ -85,11 +85,11 @@ public class GitHubService {
             new ParameterizedTypeReference<>() {
             }
         );
-    List<Item> users = responseEntity.getBody();
-    if (users == null) {
+    List<Item> allRepos = responseEntity.getBody();
+    if (allRepos == null) {
       return Collections.emptySet();
     }
-    return users.stream()
+    return allRepos.stream()
         .map(Item::getFullName)
         .collect(Collectors.toSet());
   }
@@ -108,11 +108,11 @@ public class GitHubService {
     HttpEntity<String> entity = new HttpEntity<>(headers);
     ResponseEntity<GitHubResponse> responseEntity =
         restTemplate.exchange(searchReposUrl, HttpMethod.GET, entity, GitHubResponse.class);
-    GitHubResponse users = responseEntity.getBody();
-    if (users == null) {
+    GitHubResponse filteredRepos = responseEntity.getBody();
+    if (filteredRepos == null) {
       return Collections.emptySet();
     }
-    return users.getItems().stream()
+    return filteredRepos.getItems().stream()
         .map(Item::getFullName).collect(Collectors.toSet());
   }
 }
